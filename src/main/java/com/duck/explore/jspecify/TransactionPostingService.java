@@ -9,7 +9,7 @@ import java.util.Objects;
 public class TransactionPostingService {
 
     // Parameters and return are non-null by default
-    @Nullable
+    @Nullable  // If I comment this annotation, when commit the pre-commit githooks will not allow to commit.
     public TransactionRecord process(TransactionPostingRequest request) {
         String ref = resolveReference(request.externalRefCode());
         if(Objects.isNull(ref)) {
