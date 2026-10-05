@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# Git Pre-Commit Hook: JSpecify & NullAway Compile-Time Verification
+# ==============================================================================
+
+set -e
+
+# 1. Identify staged .java files
+STAGED_JAVA_FILES=$(git diff --cached --name-only --diff-filter=ACMR | grep '\.java$' || true)
+
+if [ -z "$STAGED_JAVA_FILES" ]; then
+    # No Java files modified in this commit, skip verification
+    exit 0
+fi
+
+echo "======================================================="
+echo "🔍 [PRE-COMMIT] Validating null-safety via NullAway..."
+echo "======================================================="
+
+# 2. Check for Maven wrapper or local mvn
+if [ -f "./mvnw" ]; then
+    MVN_CMD="./mvnw"
+elif command -v mvn &> /dev/null; then
+    MVN_CMD="mvn"
+else
+    echo "❌ Error: Neither ./mvnw nor system 'mvn' was found in PATH."
+    exit 1
+fi
+
+# 3. Stash unstaged changes to ensure we only compile what is staged
+STASH_NAME="pre-commit-nullcheck-$(date +%s)"
+HAS_UNSTAGED=$(git diff --name-only)
+
+if [ -n "$HAS_UNSTAGED" ]; then
+    git stash push -q --keep-index -m "$STASH_NAME"
+fi
+
+# Function to restore stash on exit
+restore_stash() {
+    if [ -n "$HAS_UNSTAGED" ]; then
+        STASH_INDEX=$(git stash list | grep "$STASH_NAME" | head -n1 | cut -d: -f1 || true)
+        if [ -n "$STASH_INDEX" ]; then
+            git stash pop -q "$STASH_INDEX"
+        fi
+    fi
+}
+trap restore_stash EXIT
+
+# 4. Run compilation with NullAway enforcement (skip tests and artifact packaging)
+echo "⚡ Compiling sources with NullAway and JSpecify checks..."
+if $MVN_CMD test-compile -DskipTests -Djacoco.skip=true -Dcheckstyle.skip=true --quiet; then
+    echo "✅ [PRE-COMMIT] Null-safety checks passed!"
+    exit 0
+else
+    echo ""
+    echo "❌ [PRE-COMMIT] NullAway compile failure!"
+    echo "💡 Fix the JSpecify @Nullable / NullAway violations shown above before committing."
+    echo "💡 (Bypass only in emergencies using: git commit --no-verify)"
+    echo ""
+    exit 1
+fi
