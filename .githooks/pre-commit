@@ -1,33 +1,48 @@
 #!/usr/bin/env bash
-# ==============================================================================
-# Git Pre-Commit Hook: JSpecify & NullAway Compile-Time Verification
-# ==============================================================================
-
 set -e
 
-# 1. Identify staged .java files
+# 1. Ensure JAVA_HOME points to Java 21 if current Java is older
+if [ -z "$JAVA_HOME" ] || [[ "$("$JAVA_HOME/bin/java" -version 2>&1)" != *"21"* ]]; then
+    # macOS (Homebrew or standard JVM directory)
+    if [ -x "/usr/libexec/java_home" ]; then
+        export JAVA_HOME=$(/usr/libexec/java_home -v 21 2>/dev/null || echo "$JAVA_HOME")
+    # Linux standard paths
+    elif [ -d "/usr/lib/jvm/java-21-openjdk" ]; then
+        export JAVA_HOME="/usr/lib/jvm/java-21-openjdk"
+    # Fallback to local SDKMAN Java 21 if present
+    elif [ -d "$HOME/.sdkman/candidates/java/21"* ]; then
+        export JAVA_HOME=$(find "$HOME/.sdkman/candidates/java" -maxdepth 1 -name "21*" | head -n 1)
+    fi
+fi
+
+# Ensure the detected JAVA_HOME binary is first in PATH
+if [ -n "$JAVA_HOME" ] && [ -d "$JAVA_HOME/bin" ]; then
+    export PATH="$JAVA_HOME/bin:$PATH"
+fi
+
+# 2. Identify staged .java files
 STAGED_JAVA_FILES=$(git diff --cached --name-only --diff-filter=ACMR | grep '\.java$' || true)
 
 if [ -z "$STAGED_JAVA_FILES" ]; then
-    # No Java files modified in this commit, skip verification
     exit 0
 fi
 
 echo "======================================================="
 echo "🔍 [PRE-COMMIT] Validating null-safety via NullAway..."
+echo "ℹ️  Using Java: $(java -version 2>&1 | head -n 1)"
 echo "======================================================="
 
-# 2. Check for Maven wrapper or local mvn
+# 3. Resolve Maven command
 if [ -f "./mvnw" ]; then
     MVN_CMD="./mvnw"
 elif command -v mvn &> /dev/null; then
     MVN_CMD="mvn"
 else
-    echo "❌ Error: Neither ./mvnw nor system 'mvn' was found in PATH."
+    echo "❌ Error: Neither ./mvnw nor system 'mvn' found in PATH."
     exit 1
 fi
 
-# 3. Stash unstaged changes to ensure we only compile what is staged
+# 4. Stash unstaged changes to only compile staged files
 STASH_NAME="pre-commit-nullcheck-$(date +%s)"
 HAS_UNSTAGED=$(git diff --name-only)
 
@@ -35,7 +50,6 @@ if [ -n "$HAS_UNSTAGED" ]; then
     git stash push -q --keep-index -m "$STASH_NAME"
 fi
 
-# Function to restore stash on exit
 restore_stash() {
     if [ -n "$HAS_UNSTAGED" ]; then
         STASH_INDEX=$(git stash list | grep "$STASH_NAME" | head -n1 | cut -d: -f1 || true)
@@ -46,9 +60,9 @@ restore_stash() {
 }
 trap restore_stash EXIT
 
-# 4. Run compilation with NullAway enforcement (skip tests and artifact packaging)
+# 5. Run compilation check
 echo "⚡ Compiling sources with NullAway and JSpecify checks..."
-if $MVN_CMD test-compile -DskipTests -Djacoco.skip=true -Dcheckstyle.skip=true --quiet; then
+if $MVN_CMD test-compile -DskipTests -Djacoco.skip=true -Dcheckstyle.skip=true; then
     echo "✅ [PRE-COMMIT] Null-safety checks passed!"
     exit 0
 else
