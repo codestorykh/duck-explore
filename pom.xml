@@ -65,6 +65,21 @@
 			<version>5.11.0</version>
 			<scope>test</scope>
 		</dependency>
+
+		<!-- Lombok -->
+		<dependency>
+			<groupId>org.projectlombok</groupId>
+			<artifactId>lombok</artifactId>
+			<version>1.18.48</version>
+			<scope>provided</scope>
+		</dependency>
+
+		<!-- JsonMappingException -->
+		<dependency>
+			<groupId>com.fasterxml.jackson.core</groupId>
+			<artifactId>jackson-databind</artifactId>
+		</dependency>
+
 	</dependencies>
 
 	<build>
@@ -115,6 +130,13 @@
 							<artifactId>jspecify</artifactId>
 							<version>${jspecify.version}</version>
 						</path>
+
+						<!-- Lombok -->
+							<path>
+								<groupId>org.projectlombok</groupId>
+								<artifactId>lombok</artifactId>
+								<version>1.18.48</version>
+							</path>
 					</annotationProcessorPaths>
 				</configuration>
 			</plugin>
@@ -147,6 +169,8 @@
 					</execution>
 				</executions>
 			</plugin>
+
+
 
 		</plugins>
 	</build>

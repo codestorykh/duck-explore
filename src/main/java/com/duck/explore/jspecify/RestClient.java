@@ -19,9 +19,9 @@ public class RestClient {
                 .body(BalanceResponse.class);
 
         // we need to check it to make noncomplie time error
-        /*if (response == null) {
+        if (response == null) {
             throw new IllegalStateException("Empty balance response payload received from core banking");
-        }*/
+        }
 
         // it compiles time error, so we need to check null
         return response.balanceCents(); // Safe: guarded by preceding check
