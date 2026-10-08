@@ -1,0 +1,77 @@
+logging:
+  level:
+    org.springframework.retry: DEBUG
+
+server:
+  port: 8181
+  tomcat: # 200 active + 100 queued = 300 => Connection #301 is immediately refused by the OS (Connection refused / TCP RST).
+    threads:
+      max: 200  #Tomcat will execute up to 200 requests concurrently
+      min-spare: 50 #50 threads remain pre-spawned and ready (min-spare: 50), avoiding thread-creation lag when traffic arrives.
+    accept-count: 100 #If all 200 threads are busy, up to 100 incoming TCP connections wait in the OS socket queue (accept-count: 100
+
+spring:
+  threads:
+    virtual:
+      enabled: true
+  application:
+    name: duck-explore
+
+
+#external:
+#  gateway:
+#    base-url: "https://api.external-gateway.com"
+#    timeouts:
+#      connect-timeout-ms: 1500
+#      socket-timeout-ms: 3000
+#      connection-request-timeout-ms: 500
+#    pool:
+#      max-total: 200
+#      default-max-per-route: 50
+#      idle-eviction-seconds: 30
+#    retry:
+#      max-attempts: 3
+#      delay: 500
+#      multiplier: 2.0
+#      random: true
+
+#Step 1: Temporarily Constrain Pool Size & Add Delay
+external:
+  gateway:
+    # Option A: Point to an endpoint with an artificial 2-second sleep (e.g. httpbin.org/delay/2 or local WireMock)
+    base-url: "http://localhost:8080"
+    timeouts:
+      connect-timeout-ms: 2000
+      socket-timeout-ms: 6000
+      connection-request-timeout-ms: 2000 # Give threads 2s before timing out
+    pool:
+      max-total: 100
+      default-max-per-route: 100           # <-- Only 2 simultaneous connections allowed!
+      idle-eviction-seconds: 30
+      #idle-eviction-seconds: 25  # Keep this lower than typical cloud load balancer timeouts (often 30s-60s)
+
+internal:
+  service:
+    timeouts:
+      connect-timeout-ms: 300           # 300ms: VPC TCP handshakes should finish in < 20ms
+      socket-timeout-ms: 1500           # 1.5s: Internal microservices must respond fast
+      connection-request-timeout-ms: 250 # 250ms: Fail fast
+    pool:
+      max-total: 500
+      default-max-per-route: 250
+      idle-eviction-seconds: 20
+    retry:
+      max-attempts: 2                   # Internal calls should fail fast to avoid queue buildup
+      delay: 100
+      multiplier: 2.0
+      random: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "health,metrics,prometheus"
+  prometheus:
+    metrics:
+      export:
+        enabled: true

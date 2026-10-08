@@ -1,4 +1,4 @@
-package com.duck.explore.jakarta.bean.alidation;
+package com.duck.explore.dto;
 
 import com.duck.explore.validation.ValidCurrency;
 import jakarta.validation.constraints.*;

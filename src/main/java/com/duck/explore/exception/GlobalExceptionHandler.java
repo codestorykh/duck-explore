@@ -12,6 +12,7 @@ import jakarta.validation.metadata.ConstraintDescriptor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -182,6 +183,74 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
+
+
+    /**
+     * Catches retry-exhaustion exceptions and returns HTTP 503 Service Unavailable
+     * (or switch to HttpStatus.CONFLICT / 409 depending on your API contract).
+     */
+    @ExceptionHandler(AccountConcurrencyException.class)
+    public ResponseEntity<ApiErrorResponse> handleAccountConcurrencyException(
+            AccountConcurrencyException ex,
+            HttpServletRequest request) {
+
+        ApiErrorResponse response = ApiErrorResponse.builder()
+                .type("https://localhost:8080/errors/concurrency-limit-exceeded")
+                .title("Account Temporarily Unavailable")
+                .status(HttpStatus.SERVICE_UNAVAILABLE.value()) // 503
+                .detail(ex.getMessage())
+                .instance(request.getRequestURI())
+                .timestamp(Instant.now())
+                .build();
+
+        // Optional: Instruct clients to back off before retrying (e.g., 2 seconds)
+        HttpHeaders headers = new HttpHeaders();
+        headers.set(HttpHeaders.RETRY_AFTER, "2");
+
+        return ResponseEntity
+                .status(HttpStatus.SERVICE_UNAVAILABLE)
+                .headers(headers)
+                .body(response);
+    }
+
+    /**
+     * Fallback if you still throw raw IllegalStateException
+     */
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<ApiErrorResponse> handleIllegalStateException(
+            IllegalStateException ex,
+            HttpServletRequest request) {
+
+        ApiErrorResponse response = ApiErrorResponse.builder()
+                .type("https://localhost:8080/errors/conflict")
+                .title("Conflict / State Error")
+                .status(HttpStatus.CONFLICT.value()) // 409
+                .detail(ex.getMessage())
+                .instance(request.getRequestURI())
+                .timestamp(Instant.now())
+                .build();
+
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+    }
+
+    // Retry RemoteServiceUnavailableException
+    @ExceptionHandler(RemoteServiceUnavailableException.class)
+    public ResponseEntity<ApiErrorResponse> handleRemoteServiceUnavailable(
+            RemoteServiceUnavailableException ex,
+            HttpServletRequest request) {
+
+        ApiErrorResponse response = ApiErrorResponse.builder()
+                .type("https://localhost:8080/errors/gateway-failure")
+                .title("Upstream Provider Failure")
+                .status(HttpStatus.BAD_GATEWAY.value()) // HTTP 502
+                .detail(ex.getMessage())
+                .instance(request.getRequestURI())
+                .timestamp(Instant.now())
+                .build();
+
+        return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(response);
+    }
+
 
     private String extractConstraintCodeFromFieldError(FieldError fieldError) {
         try {

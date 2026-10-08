@@ -1,5 +1,6 @@
 package com.duck.explore.jakarta.bean.alidation;
 
+import com.duck.explore.dto.DepositRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
