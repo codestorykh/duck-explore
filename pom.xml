@@ -127,6 +127,14 @@
 			<artifactId>h2</artifactId>
 		</dependency>
 
+		<!-- Core ArchUnit API (provides com.tngtech.archunit.core.* and .lang.*) -->
+		<dependency>
+			<groupId>com.tngtech.archunit</groupId>
+			<artifactId>archunit</artifactId>
+			<version>1.3.0</version>
+			<!-- Notice: NO <scope>test</scope> here if running in src/main/java -->
+		</dependency>
+
 	</dependencies>
 
 	<build>

@@ -1,0 +1,17 @@
+#!/bin/sh
+# .githooks/pre-push
+
+echo "🚀 [PRE-PUSH GATE] Verifying system architecture rules..."
+
+./gradlew checkArchitecture --console=plain
+STATUS=$?
+
+if [ $STATUS -ne 0 ]; then
+    echo ""
+    echo "❌ [PUSH ABORTED] Architectural boundaries were violated!"
+    echo "   👉 Review the class dependencies listed above and refactor before pushing."
+    exit 1
+fi
+
+echo "✅ Architectural integrity verified. Pushing..."
+exit 0
