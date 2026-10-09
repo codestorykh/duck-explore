@@ -21,7 +21,7 @@ public class ArchitectureVerificationRunner {
         // 1. Import all compiled classes in the root package, ignoring test classes
         JavaClasses importedClasses = new ClassFileImporter()
                 .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
-                .importPackages("com.wingbank.reconciliation");
+                .importPackages("com.duck.explore");
 
         // 2. Define Policy Rules
         // Controller -> Service -> Repository (Strict unidirectional flow)
