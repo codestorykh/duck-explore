@@ -1,17 +1,30 @@
 #!/bin/sh
+# .githooks/pre-push
+
+# Navigate to the repository root directory
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+cd "$REPO_ROOT" || exit 1
 
 echo "🚀 [PRE-PUSH GATE] Verifying system architecture rules..."
 
-# Change this line:
-# ./gradlew test --tests "*Architecture*"
+# Determine whether to use wrapper or global mvn
+if [ -f "./mvnw" ]; then
+    MAVEN_CMD="./mvnw"
+elif [ -f "./mvnw.cmd" ]; then
+    MAVEN_CMD="./mvnw.cmd"
+else
+    MAVEN_CMD="mvn"
+fi
 
-# To use Maven:
-./mvnw test -Dtest="*Architecture*"
-# Or if you don't have mvnw:
-# mvn test -Dtest="*Architecture*"
+$MAVEN_CMD test -Dtest="*Architecture*"
+STATUS=$?
 
-if [ $? -ne 0 ]; then
+if [ $STATUS -ne 0 ]; then
+    echo ""
     echo "❌ [PUSH ABORTED] Architectural boundaries were violated!"
     echo "   👉 Review the class dependencies listed above and refactor before pushing."
     exit 1
 fi
+
+echo "✅ Architectural integrity verified. Pushing..."
+exit 0
