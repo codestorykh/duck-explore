@@ -223,9 +223,12 @@
 						</configuration>
 					</execution>
 				</executions>
+
+				<!-- ArchUnit -->
+				<configuration>
+					<mainClass>com.duck.explore.architecture.ArchitectureVerificationRunner</mainClass>
+				</configuration>
 			</plugin>
-
-
 
 		</plugins>
 	</build>
