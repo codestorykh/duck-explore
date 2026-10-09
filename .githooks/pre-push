@@ -1,8 +1,10 @@
 #!/bin/sh
+# .githooks/pre-push
+
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 cd "$REPO_ROOT" || exit 1
 
-echo "🚀 [PRE-PUSH GATE] Verifying system architecture rules..."
+echo "🚀 [PRE-PUSH GATE] Compiling and verifying architecture rules..."
 
 # Use wrapper if present, otherwise global mvn
 if [ -f "./mvnw" ]; then
@@ -13,8 +15,8 @@ else
     CMD="mvn"
 fi
 
-# Target ArchitectureVerificationRunner specifically, or ignore if no pattern matches
-$CMD test -Dtest="*Architecture*" -Dsurefire.failIfNoSpecifiedTests=false
+# Compile production classes only, then execute the runner
+$CMD compile exec:java -Dexec.mainClass="com.duck.explore.architecture.ArchitectureVerificationRunner" -q
 STATUS=$?
 
 if [ $STATUS -ne 0 ]; then
