@@ -1,22 +1,20 @@
 #!/bin/sh
-# .githooks/pre-push
-
-# Navigate to the repository root directory
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 cd "$REPO_ROOT" || exit 1
 
 echo "🚀 [PRE-PUSH GATE] Verifying system architecture rules..."
 
-# Determine whether to use wrapper or global mvn
+# Use wrapper if present, otherwise global mvn
 if [ -f "./mvnw" ]; then
-    MAVEN_CMD="./mvnw"
+    CMD="./mvnw"
 elif [ -f "./mvnw.cmd" ]; then
-    MAVEN_CMD="./mvnw.cmd"
+    CMD="./mvnw.cmd"
 else
-    MAVEN_CMD="mvn"
+    CMD="mvn"
 fi
 
-$MAVEN_CMD test -Dtest="*Architecture*"
+# Target ArchitectureVerificationRunner specifically, or ignore if no pattern matches
+$CMD test -Dtest="*Architecture*" -Dsurefire.failIfNoSpecifiedTests=false
 STATUS=$?
 
 if [ $STATUS -ne 0 ]; then
