@@ -1,28 +1,77 @@
-#!/bin/sh
-# .githooks/pre-push
+#!/usr/bin/env bash
+set -e
 
-REPO_ROOT="$(git rev-parse --show-toplevel)"
+# 1. Always navigate to the repository root
+REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 cd "$REPO_ROOT" || exit 1
 
-echo "🚀 [PRE-PUSH GATE] Compiling and verifying architecture rules..."
+# 2. Ensure JAVA_HOME resolves to Java 21 on macOS
+CURRENT_JAVA_VER=$(java -version 2>&1 | head -n 1 || true)
 
-# Use wrapper if present, otherwise global mvn
-if [ -f "./mvnw" ]; then
-    CMD="./mvnw"
-elif [ -f "./mvnw.cmd" ]; then
-    CMD="./mvnw.cmd"
-else
-    CMD="mvn"
+if [[ -z "$JAVA_HOME" ]] || [[ "$CURRENT_JAVA_VER" != *"21"* ]]; then
+    # Native macOS JVM utility
+    if [ -x "/usr/libexec/java_home" ]; then
+        DETECTED_JAVA=$(/usr/libexec/java_home -v 21 2>/dev/null || true)
+        if [ -n "$DETECTED_JAVA" ]; then
+            export JAVA_HOME="$DETECTED_JAVA"
+        fi
+    fi
+
+    # SDKMAN fallback on macOS (~/.sdkman)
+    if [ -z "$JAVA_HOME" ] && [ -d "$HOME/.sdkman/candidates/java" ]; then
+        SDKMAN_21=$(find "$HOME/.sdkman/candidates/java" -maxdepth 1 -name "*21*" | head -n 1 || true)
+        if [ -n "$SDKMAN_21" ]; then
+            export JAVA_HOME="$SDKMAN_21"
+        fi
+    fi
+
+    # Homebrew OpenJDK paths on macOS (Apple Silicon: /opt/homebrew, Intel: /usr/local)
+    if [ -z "$JAVA_HOME" ]; then
+        if [ -d "/opt/homebrew/opt/openjdk@21" ]; then
+            export JAVA_HOME="/opt/homebrew/opt/openjdk@21"
+        elif [ -d "/usr/local/opt/openjdk@21" ]; then
+            export JAVA_HOME="/usr/local/opt/openjdk@21"
+        fi
+    fi
 fi
 
-# Compile production classes only, then execute the runner
+# Prepend JAVA_HOME/bin to PATH so child processes run the right JDK
+if [ -n "$JAVA_HOME" ] && [ -d "$JAVA_HOME/bin" ]; then
+    export PATH="$JAVA_HOME/bin:$PATH"
+fi
+
+echo "======================================================="
+echo "🚀 [PRE-PUSH GATE] Verifying system architecture rules..."
+echo "ℹ️  Using Java: $(java -version 2>&1 | head -n 1)"
+echo "======================================================="
+
+# 3. Resolve Maven command (wrapper first, then PATH)
+if [ -x "./mvnw" ]; then
+    CMD="./mvnw"
+elif [ -f "./mvnw" ]; then
+    # Ensure wrapper has execute permission on macOS
+    chmod +x ./mvnw
+    CMD="./mvnw"
+elif command -v mvn >/dev/null 2>&1; then
+    CMD="mvn"
+else
+    echo "❌ [ERROR] Neither ./mvnw nor global 'mvn' found in PATH."
+    exit 1
+fi
+
+# 4. Compile production code and execute ArchUnit ArchitectureVerificationRunner
+set +e
 $CMD compile exec:java -Dexec.mainClass="com.duck.explore.architecture.ArchitectureVerificationRunner" -q
 STATUS=$?
+set -e
 
+# 5. Evaluate results
 if [ $STATUS -ne 0 ]; then
     echo ""
     echo "❌ [PUSH ABORTED] Architectural boundaries were violated!"
     echo "   👉 Review the class dependencies listed above and refactor before pushing."
+    echo "   💡 (Bypass only in emergencies: git push --no-verify)"
+    echo ""
     exit 1
 fi
 
