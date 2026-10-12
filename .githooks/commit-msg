@@ -1,0 +1,77 @@
+#!/usr/bin/env bash
+set -e
+
+COMMIT_MSG_FILE="$1"
+
+# 1. Read first and second lines, trimming surrounding whitespace
+FIRST_LINE=$(head -n 1 "$COMMIT_MSG_FILE" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+SECOND_LINE=$(sed -n '2p' "$COMMIT_MSG_FILE" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+TOTAL_LINES=$(wc -l < "$COMMIT_MSG_FILE" | tr -d ' ')
+
+# 2. Skip automated git actions (merge, revert, fixup, squash)
+if [[ "$FIRST_LINE" =~ ^(Merge|Revert|fixup!|squash!) ]]; then
+    exit 0
+fi
+
+# 3. Enforce Git standard: Line 2 must be blank if there is a commit body
+if [ "$TOTAL_LINES" -ge 2 ] && [ -n "$SECOND_LINE" ]; then
+    echo ""
+    echo "======================================================================"
+    echo "❌ [GIT FORMAT ERROR] Commit message structure invalid!"
+    echo "======================================================================"
+    echo "Line 2 must be empty to separate the subject line from the body."
+    echo "Current line 2: \"$SECOND_LINE\""
+    echo "======================================================================"
+    echo ""
+    exit 1
+fi
+
+# 4. Enforce Git standard: Subject line length <= 72 characters
+SUBJECT_LENGTH=${#FIRST_LINE}
+if [ "$SUBJECT_LENGTH" -gt 72 ]; then
+    echo ""
+    echo "======================================================================"
+    echo "❌ [LENGTH EXCEEDED] Commit subject line is too long!"
+    echo "======================================================================"
+    echo "Current length: $SUBJECT_LENGTH chars (Maximum allowed: 72 chars)"
+    echo "Subject: \"$FIRST_LINE\""
+    echo "👉 Shorten the first line and put details in the commit body."
+    echo "======================================================================"
+    echo ""
+    exit 1
+fi
+
+# 5. Jira + Conventional Commit Regex Patterns
+# Pattern 1: Conventional Commits with Jira in scope: feat(PAY-1234): description
+CONVENTIONAL_WITH_JIRA='^(feat|fix|chore|refactor|test|docs|perf|ci)\([A-Z]{2,10}-[0-9]{1,6}\):[[:space:]].+'
+
+# Pattern 2: Jira Prefix format: PAY-1234: description or [PAY-1234] description
+JIRA_PREFIX='^(\[[A-Z]{2,10}-[0-9]{1,6}\]|[A-Z]{2,10}-[0-9]{1,6})(:|[[:space:]]).+'
+
+# 6. Validate subject line against allowed patterns
+if [[ ! "$FIRST_LINE" =~ $CONVENTIONAL_WITH_JIRA ]] && [[ ! "$FIRST_LINE" =~ $JIRA_PREFIX ]]; then
+    echo ""
+    echo "======================================================================"
+    echo "❌ [INVALID COMMIT MESSAGE] Commit rejected!"
+    echo "======================================================================"
+    echo "Current message:"
+    echo "  \"$FIRST_LINE\""
+    echo ""
+    echo "👉 Commit message must match one of these accepted formats:"
+    echo ""
+    echo "  1. Conventional format (recommended):"
+    echo "     feat(PAY-1024): add idempotency interceptor"
+    echo "     fix(PAY-1024): resolve redis lock timeout"
+    echo ""
+    echo "  2. Jira prefix format:"
+    echo "     PAY-1024: add idempotency interceptor"
+    echo "     [PAY-1024] add idempotency interceptor"
+    echo ""
+    echo "💡 Emergency bypass (use sparingly):"
+    echo "  git commit --no-verify -m \"...\""
+    echo "======================================================================"
+    echo ""
+    exit 1
+fi
+
+exit 0
