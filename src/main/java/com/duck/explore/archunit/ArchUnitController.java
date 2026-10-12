@@ -16,7 +16,11 @@ public class ArchUnitController {
     @GetMapping("/name")
     public ResponseEntity<String> hello(@RequestParam String name) {
         System.out.println("Intercept request hello " + name);
-
-        return ResponseEntity.ok(archUnitService.hello(name));
+        try {
+            return ResponseEntity.ok(archUnitService.hello(name));
+        }catch (Exception ex){
+           ex.printStackTrace();
+           return ResponseEntity.status(500).build();
+        }
     }
 }
