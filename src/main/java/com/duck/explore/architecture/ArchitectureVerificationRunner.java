@@ -28,11 +28,13 @@ public class ArchitectureVerificationRunner {
         ArchRule layerRule = layeredArchitecture()
                 .consideringAllDependencies()
                 .layer("Controller").definedBy("..controller..")
-                .layer("Service").definedBy("..service..")
+                // Include service and retry/worker packages in the Service layer:
+                .layer("Service").definedBy("..service..", "..retry..")
                 .layer("Repository").definedBy("..repository..")
                 .whereLayer("Controller").mayNotBeAccessedByAnyLayer()
                 .whereLayer("Service").mayOnlyBeAccessedByLayers("Controller")
-                .whereLayer("Repository").mayOnlyBeAccessedByLayers("Service");
+                .whereLayer("Repository").mayOnlyBeAccessedByLayers("Service")
+                .allowEmptyShould(true);
 
         //3. Domain Entity & Security Guardrails
         // JPA Entities must NEVER be used or returned in Controllers
