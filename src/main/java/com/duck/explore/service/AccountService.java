@@ -2,6 +2,7 @@ package com.duck.explore.service;
 
 import com.duck.explore.repository.AccountRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 @Service
@@ -13,6 +14,7 @@ public class AccountService {
         this.accountRepository = accountRepository;
     }
 
+    @Transactional
     public String hello(String name) {
         var account = accountRepository.findByAccountNumber("12345678");
         if(StringUtils.hasText(name) && account.isPresent()) {

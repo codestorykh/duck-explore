@@ -29,7 +29,7 @@ public class ArchitectureVerificationRunner {
                 .consideringAllDependencies()
                 .layer("Controller").definedBy("..controller..")
                 // Include service and retry/worker packages in the Service layer:
-                .layer("Service").definedBy("..service..", "..retry..")
+                .layer("Service").definedBy("..service..")
                 .layer("Repository").definedBy("..repository..")
                 .whereLayer("Controller").mayNotBeAccessedByAnyLayer()
                 .whereLayer("Service").mayOnlyBeAccessedByLayers("Controller")
@@ -40,7 +40,7 @@ public class ArchitectureVerificationRunner {
         // JPA Entities must NEVER be used or returned in Controllers
         ArchRule entityLeakRule = noClasses()
                 .that().resideInAPackage("..controller..")
-                .should().dependOnClassesThat().resideInAPackage("..domain.entity..")
+                .should().dependOnClassesThat().resideInAPackage("..entity..")
                 .because("Entities leak internal DB state; Controllers must expose DTOs only");
 
         //4. Transaction & Framework Misuse Guardrails
