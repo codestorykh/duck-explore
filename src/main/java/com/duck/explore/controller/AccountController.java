@@ -1,7 +1,6 @@
 package com.duck.explore.controller;
 
 import com.duck.explore.entity.Account;
-import com.duck.explore.repository.AccountRepository;
 import com.duck.explore.service.AccountService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -14,18 +13,16 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 public class AccountController {
 
-    private final AccountRepository accountRepository;
     private final AccountService accountService;
 
-    public AccountController(AccountRepository accountRepository, AccountService accountService) {
-        this.accountRepository = accountRepository;
+    public AccountController(AccountService accountService) {
         this.accountService = accountService;
     }
 
     @GetMapping("/name")
-    public ResponseEntity<String> hello(@RequestParam String name, @RequestBody Account account) {
+    public ResponseEntity<String> hello(@RequestParam String name) {
 //        System.out.println("Intercept request hello " + name);
-        log.info("Intercept request hello {} {}", name, account);
+        log.info("Intercept request hello {}", name);
         try {
             return ResponseEntity.ok(accountService.hello(name));
         }catch (Exception ex){
