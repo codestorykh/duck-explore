@@ -1,0 +1,18 @@
+logging:
+  level:
+    net.ttddyy.dsproxy.listener: INFO
+
+spring:
+  application:
+    name: idempotency
+  data:
+    redis:
+      host: redis-10000.rediscluster.wingmoney.com
+      password: '!QAwerf6trd2'
+      port: 10000
+      timeout: 30000
+      enabledSSL: true
+      enabledRedisPassword: true
+  jackson:
+    serialization:
+      fail_on_empty_beans: false
